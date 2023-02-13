@@ -1,135 +1,227 @@
+var express = require("express");
+// var jwt=require("jsonwebtoken");
+const jwt = require('jsonwebtoken');
+
+const passport = require('passport')
+const bcrypt = require('bcrypt')
+
+var cors = require("cors");
+var { connectDB } = require('./db');
+require('dotenv').config()
+const port = process.env.PORT || 3000;
+const DATABASE_URL = process.env.DATABASE_URL;
+connectDB(DATABASE_URL);
+
+var app = express();
+app.use(passport.initialize())
 
 
-'use strict'
+require('./passport')
+const { User } = require('./models/Dbschema');
+const cookieParser = require("cookie-parser");
+//"mongodb://localhost:27017"
+
+
+genToken = user => {
+  return jwt.sign({
+    iss: 'shivam yadav',
+    sub: user.id
+  }, 'secret_key', { expiresIn: 600000 });
+}
+
+app.use(express.json())
+app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser())
+//app.use(cors())
+// TODO
+
+app.post('/login', passport.authenticate('jwt', { session: false }), async (req, res, next) => {
+  /////
+
+  const userName = req.body.email;
+  const password = req.body.password;
+  console.log(userName)
+  User.findOne({ 'email': userName })
+    .then((user) => {
+      if (!user) {
+        return res.status(404).json({ userNotFound: "Username not found." });
+      }
+      else {
+        console.log(user)
+        bcrypt.compare(password, user.password)
+          .then((isMatch) => {
+            if (isMatch) {
+              const payload = {
+                id: user.id,
+                name: user.fullName
+              };
+              const token = jwt.sign(payload, 'secret_key', { expiresIn: 600000 });
+              res.cookie('jwt', token, { httpOnly: true, secure: false });
+              res.status(200).json({ success: true, token: token });
+            }
+            else {
+              return res.status(400).json({ incorrectPassword: "Password incorrect." });
+            }
+          })
+      }
+    });
+
+
+  /////
+
+});
+
+// TODO
+app.post('/register', async (req, res, next) => {
+  const { email, password } = req.body;
+
+  //Check If User Exists
+  let foundUser = await User.findOne({ email });
+  if (foundUser) {
+    return res.status(403).json({ error: 'Email is already in use' });
+  }
+  const hash = await bcrypt.hashSync(password, 10);
+  console.log(hash)
+  const newUser = await new User({ email, 'password': hash })
+  await newUser.save()
+  // Generate JWT token
+  const token = genToken(newUser)
+  let options = {
+
+    maxAge: 1000 * 60 * 60 * 24 // would expire after 24 hours
+    // The cookie only accessible by the web server
+  }
+
+  res.cookie('x-access-token', token, options)
+  //console.log(token);
+  res.status(200).json({ token });
+});
+
 
 /**
- * Module dependencies.
+* -------------- GET ROUTES ----------------
+*/
+
+app.get('/', (req, res, next) => {
+  res.send('<h1>Home</h1><p>Please <a href="/register">register</a></p>');
+});
+
+
+
+app.get('/secret', passport.authenticate('jwt', { session: false }), (req, res, next) => {
+  let token = req.cookies['x-access-token'];
+
+  console.log(token);
+  res.json("Secret Data")
+})
+
+
+
+
+// When you visit http://localhost:3000/login, you will see "Login Page"
+app.get('/login', (req, res, next) => {
+
+  const form = '<h1>Login Page</h1><form method="POST" action="/login">\
+    Enter Username:<br><input type="text" name="email">\
+    <br>Enter Password:<br><input type="password" name="password">\
+    <br><br><input type="submit" value="Submit"></form>';
+
+  res.send(form);
+
+});
+
+// When you visit http://localhost:3000/register, you will see "Register Page"
+app.get('/register', (req, res, next) => {
+
+  const form = '<h1>Register Page</h1><form method="post" action="register">\
+                    Enter Username:<br><input type="text" name="email">\
+                    <br>Enter Password:<br><input type="password" name="password">\
+                    <br><br><input type="submit" value="Submit"></form>';
+
+  res.send(form);
+
+});
+
+/**
+ * Lookup how to authenticate users on routes with Local Strategy
+ * Google Search: "How to use Express Passport Local Strategy"
+ * 
+ * Also, look up what behaviour express session has without a maxage set
  */
+app.get('/protected-route', (req, res, next) => {
 
-var express = require('../..');
-var hash = require('pbkdf2-password')()
-var path = require('path');
-var session = require('express-session');
-
-var app = module.exports = express();
-
-// config
-
-app.set('view engine', 'ejs');
-app.set('views', path.join(__dirname, 'views'));
-
-// middleware
-
-app.use(express.urlencoded({ extended: false }))
-app.use(session({
-  resave: false, // don't save session if unmodified
-  saveUninitialized: false, // don't create session until something stored
-  secret: 'shhhh, very secret'
-}));
-
-// Session-persisted message middleware
-
-app.use(function(req, res, next){
-  var err = req.session.error;
-  var msg = req.session.success;
-  delete req.session.error;
-  delete req.session.success;
-  res.locals.message = '';
-  if (err) res.locals.message = '<p class="msg error">' + err + '</p>';
-  if (msg) res.locals.message = '<p class="msg success">' + msg + '</p>';
-  next();
-});
-
-// dummy database
-
-var users = {
-  tj: { name: 'tj' }
-};
-
-// when you create a user, generate a salt
-// and hash the password ('foobar' is the pass here)
-
-hash({ password: 'foobar' }, function (err, pass, salt, hash) {
-  if (err) throw err;
-  // store the salt & hash in the "db"
-  users.tj.salt = salt;
-  users.tj.hash = hash;
-});
-
-
-// Authenticate using our plain-object database of doom!
-
-function authenticate(name, pass, fn) {
-  if (!module.parent) console.log('authenticating %s:%s', name, pass);
-  var user = users[name];
-  // query the db for the given username
-  if (!user) return fn(null, null)
-  // apply the same algorithm to the POSTed password, applying
-  // the hash against the pass / salt, if there is a match we
-  // found the user
-  hash({ password: pass, salt: user.salt }, function (err, pass, salt, hash) {
-    if (err) return fn(err);
-    if (hash === user.hash) return fn(null, user)
-    fn(null, null)
-  });
-}
-
-function restrict(req, res, next) {
-  if (req.session.user) {
-    next();
+  // This is how you check if a user is authenticated and protect a route.  You could turn this into a custom middleware to make it less redundant
+  if (req.isAuthenticated()) {
+    res.send('<h1>You are authenticated</h1><p><a href="/logout">Logout and reload</a></p>');
   } else {
-    req.session.error = 'Access denied!';
-    res.redirect('/login');
+    res.send('<h1>You are not authenticated</h1><p><a href="/login">Login</a></p>');
   }
+});
+
+// Visiting this route logs the user out
+app.get('/logout', (req, res, next) => {
+  req.logout();
+  res.redirect('/protected-route');
+});
+
+app.get('/login-success', (req, res, next) => {
+  res.send('<p>You successfully logged in. --> <a href="/protected-route">Go to protected route</a></p>');
+});
+
+app.get('/login-failure', (req, res, next) => {
+  res.send('You entered the wrong password.');
+});
+app.listen(3000)
+
+/*
+
+
+const express = require('express')
+const mongoose = require('mongoose')
+const bodyParser = require('body-parser')
+const jwt = require('jsonwebtoken');
+const passport = require('passport')
+require('./passport')
+const app = express()
+genToken = user => {
+  return jwt.sign({
+    iss: 'shivam yadav',
+    sub: user.id,
+    iat: new Date().getTime(),
+    exp: new Date().setDate(new Date().getDate() + 1)
+  }, 'secret_key');
 }
+app.use(bodyParser.json())
+app.get('/',(req,res)=>{
+  res.send('Hello world')
+})
+app.get('/secret', passport.authenticate('jwt',{session: false}),(req,res,next)=>{
+    res.json("Secret Data")
+})
 
-app.get('/', function(req, res){
-  res.redirect('/login');
+app.post('/register', async function (req, res, next) {
+  const { email, password } = req.body;
+  
+  //Check If User Exists
+  let foundUser = await User.findOne({ email });
+  if (foundUser) {
+    return res.status(403).json({ error: 'Email is already in use'});
+  }
+ 
+  const newUser = new User({ email, password})
+  await newUser.save()
+  // Generate JWT token
+  const token = genToken(newUser)
+  res.status(200).json({token})
 });
+mongoose.connect("mongodb://localhost/louji", {useNewUrlParser: true, useUnifiedTopology: true});
+mongoose.connection.once('open',function(){
+  console.log('Connected to Mongo');
+}).on('error',function(err){
+  console.log('Mongo Error', err);
+})
+app.listen(8000,()=>{
+  console.log('Serve is up and running at the port 8000')
+})
 
-app.get('/restricted', restrict, function(req, res){
-  res.send('Wahoo! restricted area, click to <a href="/logout">logout</a>');
-});
-
-app.get('/logout', function(req, res){
-  // destroy the user's session to log them out
-  // will be re-created next request
-  req.session.destroy(function(){
-    res.redirect('/');
-  });
-});
-
-app.get('/login', function(req, res){
-  res.render('login');
-});
-
-app.post('/login', function (req, res, next) {
-  authenticate(req.body.username, req.body.password, function(err, user){
-    if (err) return next(err)
-    if (user) {
-      // Regenerate session when signing in
-      // to prevent fixation
-      req.session.regenerate(function(){
-        // Store the user's primary key
-        // in the session store to be retrieved,
-        // or in this case the entire user object
-        req.session.user = user;
-        req.session.success = 'Authenticated as ' + user.name
-          + ' click to <a href="/logout">logout</a>. '
-          + ' You may now access <a href="/restricted">/restricted</a>.';
-        res.redirect('back');
-      });
-    } else {
-      req.session.error = 'Authentication failed, please check your '
-        + ' username and password.'
-        + ' (use "tj" and "foobar")';
-      res.redirect('/login');
-    }
-  });
-});
-
-/* istanbul ignore next */
-if (!module.parent) {
-  app.listen(3000);
-  console.log('Express started on port 3000');
-}
+*/
