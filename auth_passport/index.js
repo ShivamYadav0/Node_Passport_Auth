@@ -4,7 +4,7 @@ const jwt = require('jsonwebtoken');
 
 const passport = require('passport')
 const bcrypt = require('bcrypt')
-
+const session = require("express-session")
 var cors = require("cors");
 var { connectDB } = require('./db');
 require('dotenv').config()
@@ -13,8 +13,15 @@ const DATABASE_URL = process.env.DATABASE_URL;
 connectDB(DATABASE_URL);
 
 var app = express();
+app.use(
+  session({
+    secret: "our little secret.",
+    resave: false,
+    saveUninitialized: false,
+  })
+);
 app.use(passport.initialize())
-
+app.use(passport.session())
 
 require('./passport')
 const { User } = require('./models/Dbschema');
@@ -28,14 +35,19 @@ genToken = user => {
     sub: user.id
   }, 'secret_key', { expiresIn: 600000 });
 }
-
+let optionsc = {
+  httpOnly: true,
+  secure: false,
+  maxAge: 1000 * 60 * 60 * 24 // would expire after 24 hours
+  // The cookie only accessible by the web server
+}
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser())
 //app.use(cors())
 // TODO
 
-app.post('/login', passport.authenticate('jwt', { session: false }), async (req, res, next) => {
+app.post('/login', async (req, res, next) => {
   /////
 
   const userName = req.body.email;
@@ -55,8 +67,10 @@ app.post('/login', passport.authenticate('jwt', { session: false }), async (req,
                 id: user.id,
                 name: user.fullName
               };
-              const token = jwt.sign(payload, 'secret_key', { expiresIn: 600000 });
-              res.cookie('jwt', token, { httpOnly: true, secure: false });
+              const token = genToken(user)
+
+
+              res.cookie('x-access-token', token, optionsc)
               res.status(200).json({ success: true, token: token });
             }
             else {
@@ -86,13 +100,9 @@ app.post('/register', async (req, res, next) => {
   await newUser.save()
   // Generate JWT token
   const token = genToken(newUser)
-  let options = {
 
-    maxAge: 1000 * 60 * 60 * 24 // would expire after 24 hours
-    // The cookie only accessible by the web server
-  }
 
-  res.cookie('x-access-token', token, options)
+  res.cookie('x-access-token', token, optionsc)
   //console.log(token);
   res.status(200).json({ token });
 });
@@ -103,7 +113,7 @@ app.post('/register', async (req, res, next) => {
 */
 
 app.get('/', (req, res, next) => {
-  res.send('<h1>Home</h1><p>Please <a href="/register">register</a></p>');
+  res.send('<h1>Home</h1><p>Please <a href="/register">register</a>   <a href="/login">login</a>  <a href="/logout">logout</a></p>');
 });
 
 
@@ -120,19 +130,37 @@ app.get('/secret', passport.authenticate('jwt', { session: false }), (req, res, 
 
 // When you visit http://localhost:3000/login, you will see "Login Page"
 app.get('/login', (req, res, next) => {
+  var token = req.cookies['x-access-token'];
+  var flag;
+  console.log(token)
+  if (token)
+    flag = jwt.verify(token, 'secret_key');
+  if (flag && token) {
 
-  const form = '<h1>Login Page</h1><form method="POST" action="/login">\
+    res.send('<h1>YOU ARE ALREADY LOGGED IN</h1> <br/>  <a href="/logout">logout</a>')
+  }
+  else {
+    const form = '<h1>Login Page</h1><form method="POST" action="/login">\
     Enter Username:<br><input type="text" name="email">\
     <br>Enter Password:<br><input type="password" name="password">\
     <br><br><input type="submit" value="Submit"></form>';
 
-  res.send(form);
+    res.send(form);
+  }
 
 });
 
 // When you visit http://localhost:3000/register, you will see "Register Page"
 app.get('/register', (req, res, next) => {
+  var token = req.cookies['x-access-token'];
+  var flag;
+  console.log(token)
+  if (token)
+    flag = jwt.verify(token, 'secret_key');
+  if (flag && token) {
 
+    res.send('<h1>YOU ARE ALREADY REGISTERED IN</h1> <br/>  <a href="/logout">logout</a>')
+  }
   const form = '<h1>Register Page</h1><form method="post" action="register">\
                     Enter Username:<br><input type="text" name="email">\
                     <br>Enter Password:<br><input type="password" name="password">\
@@ -148,7 +176,7 @@ app.get('/register', (req, res, next) => {
  * 
  * Also, look up what behaviour express session has without a maxage set
  */
-app.get('/protected-route', (req, res, next) => {
+app.get('/protected-route', passport.authenticate('jwt', { session: false }), (req, res, next) => {
 
   // This is how you check if a user is authenticated and protect a route.  You could turn this into a custom middleware to make it less redundant
   if (req.isAuthenticated()) {
@@ -160,8 +188,12 @@ app.get('/protected-route', (req, res, next) => {
 
 // Visiting this route logs the user out
 app.get('/logout', (req, res, next) => {
-  req.logout();
-  res.redirect('/protected-route');
+  req.logout(function (err) {
+    if (err) { return next(err); }
+    res.clearCookie('x-access-token');
+    res.redirect('/');
+  });
+
 });
 
 app.get('/login-success', (req, res, next) => {
