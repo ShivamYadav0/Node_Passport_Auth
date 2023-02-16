@@ -8,8 +8,7 @@ var { connectDB } = require('./db');
 require('./passport')
 const loginRouter=require("./routers/login")
 const registerRouter=require("./routers/register")
-
-
+const path = require('path')
 const port = process.env.PORT || 3000;
 const DATABASE_URL = process.env.DATABASE_URL;
 connectDB(DATABASE_URL);
@@ -21,6 +20,7 @@ app.use(cors({
   origin: true, //included origin as true
   credentials: true, //included credentials as true
 }))
+app.use( express.static(path.join(__dirname, '/public')))
 
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }));
@@ -34,7 +34,7 @@ app.use("/",registerRouter)
 */
 
 app.get('/', (req, res, next) => {
-  res.send('<h1>Home</h1><p>Please <a href="/register">register</a>   <a href="/login">login</a>  <a href="/logout">logout</a></p>');
+  res.sendFile(path.join(__dirname+'/public/index.html'));
 });
 
 
