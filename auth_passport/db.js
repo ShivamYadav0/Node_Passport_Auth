@@ -5,12 +5,15 @@ const connectDB = async (DATABASE_URL) => {
     const DBoptions = {
 
     }
-    console.log(DATABASE_URL)
     await mongoose.connect(DATABASE_URL, DBoptions)
-    console.log("Connected Successfully...")
+
+    console.log("Connected Successfully...");
+    return 1;
   }
   catch (err) {
-    console.log("Error occurred !!")
+
+    console.log("Error occurred !!");
+    return 0;
   }
 }
 
