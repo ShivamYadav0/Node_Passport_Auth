@@ -2,6 +2,7 @@ const router=require("express").Router()
 const jwt = require('jsonwebtoken');
 const passport = require('passport')
 const bcrypt = require('bcrypt')
+const path = require('path')
 require('dotenv').config()
 const { User } = require('../models/Dbschema');
 
@@ -31,12 +32,11 @@ router.get('/register', (req, res, next) => {
   
       return res.send('<h1>YOU ARE ALREADY REGISTERED IN</h1> <br/>  <a href="/logout">logout</a>')
     }
-    const form = '<h1>Register Page</h1><form method="post" action="register">\
-                      Enter Username:<br><input type="text" name="email">\
-                      <br>Enter Password:<br><input type="password" name="password">\
-                      <br><br><input type="submit" value="Submit"></form>';
-  
-    return res.send(form);
+    // const form = '<h1>Register Page</h1><form method="post" action="register">\
+    //                   Enter Username:<br><input type="text" name="email">\
+    //                   <br>Enter Password:<br><input type="password" name="password">\
+    //                   <br><br><input type="submit" value="Submit"></form>';
+    return res.sendFile(path.join(__dirname+'../../public/login.html'));
   
   });
 
@@ -45,20 +45,21 @@ router.get('/register', (req, res, next) => {
   router.post('/register', async (req, res, next) => {
    
     try{
-    const { email, password } = req.body;
+    const { username,email, password } = req.body;
     //Check If User Exists
     let foundUser = await User.findOne({ email });
     if (foundUser) {
       return res.status(403).json({ error: 'Email is already in use' });
     }
     const hash = await bcrypt.hashSync(password, 10);
-    const newUser = await new User({ email, 'password': hash })
+    const newUser = await new User({ username,email, 'password': hash })
     await newUser.save()
     // Generate JWT token
     const token = genToken(newUser)
+    
       res.cookie('x-access-token', token,optionsc)
-  
-   return res.status(200).json({ token });
+      
+   return res.status(200).redirect('/')
   }
   catch(err){
    return res.status(500).send(err)

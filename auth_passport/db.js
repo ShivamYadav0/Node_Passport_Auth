@@ -3,7 +3,8 @@ var mongoose = require('mongoose');
 const connectDB = async (DATABASE_URL) => {
   try {
     const DBoptions = {
-
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
     }
     await mongoose.connect(DATABASE_URL, DBoptions)
 

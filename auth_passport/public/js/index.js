@@ -4,6 +4,7 @@ let b=document.getElementById("sign-box")
 let cv=document.getElementById("card") 
 let ctx=cv.getContext("2d");
 let qcv=document.querySelector("#card") 
+
 function toLogin (){
  // cv.style.animation="an5m 1s ease-in-out";
   cv.style.animation="anm2 0.3s ease-in-out";
@@ -11,18 +12,20 @@ function toLogin (){
   a.style.display="flex"; 
   
 }
+//window.onload=
+ // console.log('shy');
+
+
+
 let cstyle = getComputedStyle(qcv)
 
 function toSign (){
  // cv.style.animation="an5m 1s ease-in-out";
   cv.style.animation="anm 0.3s ease-in-out";//"translateX(-700px)"
-
   a.style.display="none"; 
   b.style.display="flex"; 
   
 }
-
-
 
 function draw(){
  //ctx.beginPath(); 

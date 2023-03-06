@@ -4,6 +4,7 @@ const router = require("express").Router()
 const jwt = require('jsonwebtoken');
 const passport = require('passport')
 const bcrypt = require('bcrypt')
+const path = require('path')
 require('dotenv').config()
 const { User } = require('../models/Dbschema');
 
@@ -36,14 +37,9 @@ router.get('/login', (req, res, next) => {
     return res.send('<h1>YOU ARE ALREADY LOGGED IN</h1> <br/>  <a href="/logout">logout</a>')
   }
   else {
-    const form = '<h1>Login Page</h1><form method="POST" action="/login">\
-      Enter Username:<br><input type="text" name="email">\
-      <br>Enter Password:<br><input type="password" name="password">\
-      <br><br><input type="submit" value="Submit"></form>';
-
-    return res.send(form);
+    
+      res.sendFile(path.join(__dirname+'../../public/login.html'));
   }
-
 });
 
 
@@ -82,16 +78,19 @@ router.post('/login', async (req, res, next) => {
           user: user
         });
       }
+     // user.password="shivam"
 
       req.login(user, { session: false }, (err) => {
+        console.log("log",req.user)
         if (err) {
           res.send(err);
         }
-
+  
         const token = genToken(user)
-
+       
         res.cookie('x-access-token', token, optionsc)
-       return res.status(200).json({ success: true, token: token });
+       
+        return res.status(200).redirect('/')
 
       });
     })

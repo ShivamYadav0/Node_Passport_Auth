@@ -1,17 +1,17 @@
-body {
+#bbody {
     margin:0; 
     padding:0;
      align-items:center; 
      text-align:center; 
    }
    #box {
-     width:100%;
+     width:102vw;
      background:linear-gradient(to right,
      rgba(40, 0, 0),
      rgba(45, 40, 20), rgba(50, 20, 40));
      
      opacity:0.9;
-     height:200vh;
+     height:100vh;
      z-index:-1;
      margin-top:-50px;
      position: absolute;
@@ -19,9 +19,9 @@ body {
    }
    
    #glass {
-     overflow:hidden;
-   width:700px; 
-   height:700px; 
+  overflow:hidden;
+   width: 400px;
+   height:550px; 
    margin:auto;
    margin-top:50px;
    background: rgba(255, 255, 255, 0.2);
@@ -32,8 +32,8 @@ body {
    }
    #c {
    position: absolute;
-   margin-top:-730px;
-   margin-left:28vw;
+   top:0px;
+   left:50vw;
    z-index:99;
    color:#1199ff;
    font-size:155%;
@@ -42,18 +42,19 @@ body {
    display:flex;  
    flex-direction:column;
    justify-content:center;
-   margin:auto;
-   gap: 16px;
-   width:400px;
+   gap: 15px;
+   margin-left:-150px;
+   width: 200px;
    border-radius: 20px; 
    opacity:0.9;
-    transition: all 1s ease-in-out;
+    transition: all 0.3s ease-in-out;
    }
    
    #login-box #name,#login-box #pass {
    border:none;
    border-bottom:2px solid grey;
    border-radius:10px;
+   width:200px;
    height:40px;
    color: yellow;
    background:none; 
@@ -71,6 +72,7 @@ body {
    margin-top:80px;
    width: 100px; 
    color:red;
+   height:30px;
    background: #21ff63;
    box-shadow: 0 0 5px #2196f3, 0 0 5px #2196f3, 0 0 5px #2196f3;
    border-radius:10px;
@@ -81,21 +83,25 @@ body {
    flex-direction:column;
    justify-content:center;
    margin:auto;
-   gap: 13px;
-   width:400px;
+   margin-left:-150px;
+   gap: 10px;
+   width:300px;
    border-radius: 20px; 
    opacity:0.9;
-    transition: all 1s ease-in-out;
+    transition: all 0.3s ease-in-out;
    }
    h1 {
     font-weight: bold;
     font-size: 250%;
    }
-   
+   a,button{
+    cursor:pointer;
+   }
    #sign-box #name,#sign-box #pass,#sign-box #mail {
    border:none;
    border-bottom:2px solid grey;
    border-radius:10px;
+   width:300px;
    height:40px;
    color: yellow;
    background:none; 
@@ -111,6 +117,7 @@ body {
    
    #sign-box button {
    margin-top:35px;
+   height:30px;
    width: 100px; 
    background: #21ff63;
    box-shadow: 0 0 5px #2196f3, 0 0 5px #2196f3, 0 0 5px #2196f3;
@@ -120,10 +127,10 @@ body {
    
    #card {
    opacity:0.3;
-   margin-left:500px; 
+   margin-left: 500px;
    width: 200px;
-   height:700px; 
-   
+   height:550px; 
+   transition: all 0.1s ease-in-out;
    }
    @keyframes anm {
      0%{
@@ -145,6 +152,19 @@ body {
    }
    #fp {
    position: absolute;
-   margin-top:330px;
-   margin-left:260px;
+   margin-top:270px;
+   left:10px;
+   cursor: pointer;
+   }
+   @media (min-width:750px){
+    #glass{
+      width:700px;
+    }
+    #c{
+      width:500px;
+      margin-left: -100px;
+    }
+    #sign-box #name,#sign-box #pass,#sign-box #mail,#login-box #name,#login-box #pass{
+      width:400px;
+    }
    }
